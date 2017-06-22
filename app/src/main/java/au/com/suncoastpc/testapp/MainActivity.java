@@ -82,8 +82,10 @@ public class MainActivity extends AppCompatActivity {
                         "I/DreamController: Starting dream: name=ComponentInfo{com.android.systemui/com.android.systemui.doze.DozeService}, isTest=false, canDoze=true, userId=0");
                 statusView.setTextColor(Color.GREEN);
 
-                startTime = System.currentTimeMillis();
-                stopTime = -1;
+                if (stopTime != -1) {
+                    startTime = System.currentTimeMillis();
+                    stopTime = -1;
+                }
             }
         });
 

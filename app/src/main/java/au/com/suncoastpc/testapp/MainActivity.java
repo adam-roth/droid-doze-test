@@ -102,9 +102,17 @@ public class MainActivity extends AppCompatActivity {
                                 urlConn.connect();
 
                                 InputStream download = urlConn.getInputStream();
+
                                 while ((numRead = download.read(buffer)) != -1) {
                                     bytesTransferred += numRead;
                                     Thread.sleep(1000);     //XXX:  this won't be exact, but it's okay because it can only be slower than our target read rate, which is good enough
+
+                                    ConnectivityManager connManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                                    NetworkInfo wifiInfo = connManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+                                    boolean haveWifi = wifiInfo.isConnected() && wifiInfo.isAvailable();
+                                    if (! haveWifi) {
+                                        throw new IOException("Wifi connection went away...");
+                                    }
 
                                     Log.d("test.net", "Downloading file; bytesTransferred=" + bytesTransferred);
                                 }

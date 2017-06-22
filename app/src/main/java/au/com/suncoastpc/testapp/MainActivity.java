@@ -96,6 +96,9 @@ public class MainActivity extends AppCompatActivity {
 
                 wakeLock.release();
                 wifiLock.release();
+                
+                wakeLock = null;
+                wifiLock = null;
 
                 statusView.setText("No locks held; please press 'Acquire' button");
                 statusView.setTextColor(Color.BLACK);

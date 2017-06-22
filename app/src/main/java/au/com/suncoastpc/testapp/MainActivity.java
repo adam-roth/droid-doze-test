@@ -3,19 +3,26 @@ package au.com.suncoastpc.testapp;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.PowerManager;
 import android.provider.Settings;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.Date;
 
 /**
  * Demonstrates that holding a wake and wifi lock while being on the battery optimization whitelist is
@@ -25,6 +32,11 @@ import java.io.InputStreamReader;
  * Tested and verified on a Google Pixel.
  */
 public class MainActivity extends AppCompatActivity {
+    private static final String TEST_FILE_DOWNLOAD = "http://aroth.no-ip.org/10MB.jpg";
+    private static final int TEST_FILE_SIZE = 1024 * 1024 * 10;
+    private static final int TARGET_BYTES_PER_SECOND = TEST_FILE_SIZE / (60 * 10);  //target completion of the download in ~10 minutes
+    private static final int CONNECTION_TIMEOUT = 10000;
+
     protected TextView statusView;
     protected TextView timerView;
 
@@ -74,6 +86,48 @@ public class MainActivity extends AppCompatActivity {
                     WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
                     wifiLock = wifiManager.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "myapp-net");
                     wifiLock.acquire();
+
+                    //start a slow file download in the background; if the download fails it's an indication that Doze has killed our wifi/network
+                    new Thread() {
+                        @Override
+                        public void run() {
+                            int bytesTransferred = 0;
+                            byte[] buffer = new byte[TARGET_BYTES_PER_SECOND];
+                            try {
+                                int numRead = 0;
+
+                                URLConnection urlConn = new URL(TEST_FILE_DOWNLOAD).openConnection();
+                                urlConn.setConnectTimeout(CONNECTION_TIMEOUT);
+                                urlConn.setReadTimeout(CONNECTION_TIMEOUT);
+                                urlConn.connect();
+
+                                InputStream download = urlConn.getInputStream();
+                                while ((numRead = download.read(buffer)) != -1) {
+                                    bytesTransferred += numRead;
+                                    Thread.sleep(1000);     //XXX:  this won't be exact, but it's okay because it can only be slower than our target read rate, which is good enough
+
+                                    Log.d("test.net", "Downloading file; bytesTransferred=" + bytesTransferred);
+                                }
+                            }
+                            catch (IOException transferFailed) {
+                                Log.e("test.net", "File download failed; time=" + System.currentTimeMillis(), transferFailed);
+
+                                final String reportLine = "File download failed at " + new Date() + "; exception=" + transferFailed.getMessage() + ", bytesTransferred=" + bytesTransferred;
+                                MainActivity.this.runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        statusView.setText(statusView.getText() + "\n\n!!! Doze mode detected:  " + reportLine);
+                                        statusView.setTextColor(Color.RED);
+                                    }
+                                });
+
+                                stopTime = System.currentTimeMillis();
+                            }
+                            catch (Exception otherError) {
+                                Log.w("test.net", "Unexpected exception:  " + otherError.getMessage(), otherError);
+                            }
+                        }
+                    }.start();
                 }
 
                 //06-23 00:23:56.894 1052-1097/? I/DreamController: Starting dream: name=ComponentInfo{com.android.systemui/com.android.systemui.doze.DozeService}, isTest=false, canDoze=true, userId=0
@@ -98,7 +152,7 @@ public class MainActivity extends AppCompatActivity {
 
                 wakeLock.release();
                 wifiLock.release();
-                
+
                 wakeLock = null;
                 wifiLock = null;
 

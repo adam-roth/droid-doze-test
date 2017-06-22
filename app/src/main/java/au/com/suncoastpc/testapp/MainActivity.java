@@ -203,37 +203,5 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }.start();
-
-        //log monitor (doesn't appear to work)
-        /*new Thread() {
-            @Override
-            public void run() {
-                try {
-                    Process process = Runtime.getRuntime().exec("logcat -d");
-                    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-
-                    StringBuilder log=new StringBuilder();
-                    String line = "";
-                    while ((line = bufferedReader.readLine()) != null) {
-                        if (line.contains("canDoze=true") && statusView.getCurrentTextColor() == Color.GREEN) {
-                            //doze mode started while we're holding wake locks and on the optimization whitelist; test failed!
-                            final String reportLine = line;
-                            MainActivity.this.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    statusView.setText(statusView.getText() + "\n\n!!! Doze mode started:  " + reportLine);
-                                    statusView.setTextColor(Color.RED);
-                                }
-                            });
-
-                            stopTime = System.currentTimeMillis();
-                        }
-                    }
-                } catch (IOException e) {
-                    // Handle Exception
-                    e.printStackTrace();
-                }
-            }
-        }.start();*/
     }
 }
